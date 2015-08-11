@@ -19,7 +19,7 @@ Or install it yourself as:
 
     $ gem install xmlmc-rb-1.0.0.gem
 
-## Usage
+### Usage
 
   ## Api
 
