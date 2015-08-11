@@ -19,9 +19,9 @@ Or install it yourself as:
 
     $ gem install xmlmc-rb-1.0.0.gem
 
-### Usage
+## Usage
 
-  ## Api
+  ### Api
 
   The API helpers are divided into classes of the services available in the API. Currently only two classes exist: `Session`, and `Data`. Before you can use any other
   method, a login method must be executed. After that the session state is maintained automatically through consecutive calls. To end your session a logoff method must
