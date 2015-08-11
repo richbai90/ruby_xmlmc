@@ -21,7 +21,7 @@ Or install it yourself as:
 
 ## Usage
 
-  ### Api
+###  Api
 
   The API helpers are divided into classes of the services available in the API. Currently only two classes exist: `Session`, and `Data`. Before you can use any other
   method, a login method must be executed. After that the session state is maintained automatically through consecutive calls. To end your session a logoff method must
@@ -34,7 +34,7 @@ Or install it yourself as:
   where each index in the array represents a row, and each key is column. Keys in the return hashes have been parameterized according to the rails standard, that is
   lower snake-case.
 
-  ## example
+###  Example
 
 ```ruby
 require 'xmlmc-rb'
@@ -56,7 +56,7 @@ puts opencall[:data][0][:callref]
 session.analyst_logoff
 ```
 
-  ##Interface
+###  Interface
 
   The interface class allows you to directly interface with the API as though you were sending xml straight to the endpoint using a library like cURL.
   When you create the interface class you will have the option of providing an endpoint address and port just as in the API class. If you do not define one
@@ -67,7 +67,7 @@ session.analyst_logoff
   casing and order they are to be sent. If no parameters are required this defaults to an empty hash. Hash keys can either be symbols or strings.
   Since the helper methods call the invoke method of the interface class, the return values are the same in either case. Here is the same example as above using the interface class.
 
-  ##Usage
+###  Example
 
 ```ruby
 require 'xmlmc-rb'
