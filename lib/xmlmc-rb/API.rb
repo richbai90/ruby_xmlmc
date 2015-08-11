@@ -1,9 +1,16 @@
 #Warning! Here Be Dragons. This code is unfinished and should not be used with any certainty
-module XmlmcRb
-  module API
+require_relative 'interface'
+
+
+
+module Xmlmc
+  module Api
+    INTERFACE = Xmlmc::Interface.new
     class Session
-      def initialize xmlmc
-        @xmlmc = xmlmc
+      attr_reader :xmlmc
+      def initialize server, port = '5015'
+        @xmlmc = INTERFACE
+        @xmlmc.set_endpoint server, port
       end
 
       def analyst_logoff
@@ -12,9 +19,11 @@ module XmlmcRb
 
       def analyst_logon userid, password
         params = {
+
             :userID => userid,
             :password => password
         }
+
         invoke :analystLogon, params
       end
 
@@ -117,18 +126,16 @@ module XmlmcRb
         end
         invoke :switchAnalystContext, params
       end
-
       private
       def invoke method, params = {}, data = {}
         @xmlmc.invoke :session, method, params, data
       end
     end
     class Data
-      def initialize xmlmc
-        xmlmc_sess = XMLMC::API::Session.new xmlmc
-        xmlmc_sess.analyst_logon 'admin', ''
-        xmlmc_sess.is_session_valid
-        xmlmc_sess.analyst_logoff
+      attr_reader :xmlmc
+
+      def initialize
+        @xmlmc = INTERFACE
       end
 
       def add_record table, data, return_modified_data = false
@@ -220,6 +227,7 @@ module XmlmcRb
       private
       def invoke method, params = {}, data = {}
         @xmlmc.invoke :data, method, params, data
+
       end
     end
   end
