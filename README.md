@@ -23,7 +23,7 @@ Or install it yourself as:
 
 ###  Api
 
-  The API helpers are divided into classes of the services available in the API. Currently only two classes exist: `Session`, and `Data`. Before you can use any other
+  The API helpers are divided into classes of the services available in the API. Currently the following classes exist: `Session`, `Data`, `Helpdesk`, and `Knowledgebase`. Before you can use any other
   method, a login method must be executed. After that the session state is maintained automatically through consecutive calls. To end your session a logoff method must
   be executed.
 
@@ -31,7 +31,7 @@ Or install it yourself as:
   port number to use. By default the port is 5015 which should be the port used for 99.9% of calls to the api.
 
   The methods all return hashes of the values returned from the api. In the case of query methods, the data is returned under the `:data` key and is an array of hashes
-  where each index in the array represents a row, and each key is column. Keys in the return hashes have been parameterized according to the rails standard, that is
+  where each index in the array represents a row, and each key is column. Keys in the return hashes have been parameterized according to the rails standard, that is,
   lower snake-case.
 
 ###  Example
@@ -95,7 +95,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/xmlmc-rb.
+Bug reports and pull requests are welcome on BitBucket at https://bitbucket.org/richbai90/xmlmc-rb.
 
 
 ## License
