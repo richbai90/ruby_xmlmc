@@ -8,7 +8,7 @@ Helper methods exist for the `session` and `data` services.
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'xmlmc-rb', '1.0.0'
+gem 'xmlmc-rb', '2.0.1'
 ```
 
 And then execute:
@@ -17,24 +17,25 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install xmlmc-rb-1.0.0.gem
+    $ gem install xmlmc-rb-2.0.1.gem
 
 ## Usage
 
 ###  Api
 
-  The API helpers are divided into classes of the services available in the API. Currently the following classes exist: `Session`, `Data`, `Helpdesk`, and `Knowledgebase`. Before you can use any other
+  The API helpers are divided into classes of the services available in the API. Currently the following classes exist: `Session`, `Data`, `Helpdesk`, `Knowledgebase`, and `Mail`. Before you can use any other
   method, a login method must be executed. After that the session state is maintained automatically through consecutive calls. To end your session a logoff method must
   be executed.
 
   The session class is the only class in the api that takes a parameter during instantiation, it requires the endpoint address for your supportworks server, and an optional
-  port number to use. By default the port is 5015 which should be the port used for 99.9% of calls to the api.
+  port number to use. By default the port is 5015 which should be the port used for 99.9% of calls to the api. If you intend to use the mail API or addressbook API you can change the endpoint
+  at any time by calling `session.set_endpoint`
 
   The methods all return hashes of the values returned from the api. In the case of query methods, the data is returned under the `:data` key and is an array of hashes
   where each index in the array represents a row, and each key is column. Keys in the return hashes have been parameterized according to the rails standard, that is,
   lower snake-case.
 
-###  Example
+###  Standard Example
 
 ```ruby
 require 'xmlmc-rb'
@@ -53,6 +54,49 @@ opencall = data.sql_query 'select * from opencall'
 puts opencall[:data][0][:callref]
 
 #logoff
+session.analyst_logoff
+```
+
+###  Switching to a different API after login
+
+
+```ruby
+require "xmlmc-rb"
+
+
+
+##
+# Change these details to match your environment!! The first option needs to be the hostname or ip address
+# of your server. The second option 'analyst_logon' needs to be set to the username and password of an administrator
+# Failure to adjust these settings correctly could prevent the script from working or worse, make unwanted changes to
+# your production environment
+##
+
+endpoint = '192.168.1.32'
+username = 'admin'
+password = ''
+
+##################################################
+# List all the mailboxes in your system
+##################################################
+
+# Authenticate the user
+
+session = Xmlmc::Api::Session.new endpoint, '5015'
+session.analyst_logon username, password
+
+# Switch context to the mail API port 5014
+
+session.set_endpoint endpoint, '5014'
+
+mail = Xmlmc::Api::Mail.new
+
+puts mail.get_mailbox_list :shared
+
+# Switch back to the standard api to call the logoff
+# in future iterations we will make this more seemless
+
+session.set_endpoint endpoint, '5015'
 session.analyst_logoff
 ```
 
