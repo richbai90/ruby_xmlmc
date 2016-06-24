@@ -1,11 +1,12 @@
 module Xmlmc
   class Interface
-    attr_accessor :token
+    attr_reader :token
     attr_reader :last_error
-    attr_accessor :uri
+    attr_accessor :user_id
+    attr_accessor :user_pass
+
     def initialize server = 'localhost', port = '5015'
-      uri = "http://#{server}:#{port}"
-      @uri = URI uri
+      set_endpoint(server, port)
       @last_error = nil
       @token = nil
       @xml = nil
@@ -17,10 +18,14 @@ module Xmlmc
     end
 
     def invoke service, method, params = {}, data = {}
+      if method == :analystLogon
+        @user_id = params[:userID]
+        @user_pass = params[:password]
+      end
       method_call = build_method_call params, method, service, data
       response = send_xml method_call
       if response
-        response = parse_xml_response response
+        response = parse_xml_response response, service
 
       else
         @last_error
@@ -121,7 +126,7 @@ module Xmlmc
     end
 
 
-    def parse_xml_response xml
+    def parse_xml_response xml, service
       results = {}
       xml = Nokogiri::XML xml
       status = xml.xpath 'string(//@status)'
@@ -133,54 +138,67 @@ module Xmlmc
 
       params = xml.xpath '/methodCallResult/params/*'
       data = xml.xpath '/methodCallResult/data/*'
-
-
       params.each do |param|
         param_name = param.xpath 'name()'
         param_value = param.xpath 'string()'
         param_name = prep_for_hash param_name, true
-        param_value = param_value
+        if param_name == :rowsEffected
+          param_value = param_value.to_i
+        end
         results[param_name] = param_value
       end
 
       if data.length > 0
+        if service == :data || service == 'data'
+          recordset = xml.xpath '/methodCallResult/data/record/*'
+          from_get_record = true
 
-        recordset = xml.xpath '/methodCallResult/data/record/*'
-        from_get_record = true
-
-        if recordset.length <= 0
-          recordset = xml.xpath '/methodCallResult/data/rowData/*'
-          from_get_record = false
-        end
-
-        if from_get_record
-          results[:data] = {}
-          recordset.each do |field|
-            field_name = field.xpath 'name()'
-            field_value = field.xpath 'string()'
-            field_name = prep_for_hash field_name, true
-            field_value = prep_for_hash field_value
-            results[:data][field_name] = field_value
+          if recordset.length <= 0
+            recordset = xml.xpath '/methodCallResult/data/rowData/*'
+            from_get_record = false
           end
+
+          if from_get_record
+            results[:data] = {}
+            recordset.each do |field|
+              field_name = field.xpath 'name()'
+              field_value = field.xpath 'string()'
+              field_name = prep_for_hash field_name, true
+              field_value = prep_for_hash field_value
+              results[:data][field_name] = field_value
+            end
+          else
+            results[:data] = []
+            recordset.each do |row|
+              row_hash = {}
+              columns = row.xpath '*'
+              columns.each do |column|
+                column_name = column.xpath 'name()'
+                column_value = column.xpath 'string()'
+                column_name = prep_for_hash column_name, true
+                column_value = prep_for_hash column_value
+                row_hash[column_name] = column_value
+              end
+              results[:data] << row_hash
+            end
+          end
+
+
+          #todo: meta = parse_meta xml, from_get_record
         else
           results[:data] = []
-          recordset.each do |row|
-            row_hash = {}
-            columns = row.xpath '*'
-            columns.each do |column|
-              column_name = column.xpath 'name()'
-              column_value = column.xpath 'string()'
-              column_name = prep_for_hash column_name, true
-              column_value = prep_for_hash column_value
-              row_hash[column_name] = column_value
+          data.each do |folder|
+            folder = folder.xpath '*'
+            obj = {}
+            folder.each do |p|
+              name = p.xpath 'name()'
+              value = p.xpath 'string()'
+              obj[name] = value
             end
-            results[:data] << row_hash
+            results[:data] << obj
           end
         end
-
-        #todo: meta = parse_meta xml, from_get_record
       end
-
       results
     end
 

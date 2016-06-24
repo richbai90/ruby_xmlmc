@@ -1,23 +1,34 @@
 #Warning! Here Be Dragons. This code is unfinished and should not be used with any certainty
 require_relative 'interface'
-
+require_relative 'query'
 
 
 module Xmlmc
   module Api
     INTERFACE = Xmlmc::Interface.new
+    #Handles all the Session Operations of the XMLMC API
     class Session
       attr_reader :xmlmc
-      def initialize server, port = '5015'
+      #@param [string] server The ipaddress or hostname for the Supportworks server
+      #@param [string] port The port to send API requests to
+      def initialize (server, port = '5015')
         @xmlmc = INTERFACE
+        set_endpoint server, port
+      end
+
+      def set_endpoint (server, port)
         @xmlmc.set_endpoint server, port
       end
 
+      #logoff current session
       def analyst_logoff
         invoke :analystLogoff
       end
 
-      def analyst_logon userid, password
+      #start a new helpdesk session with analyst credentials
+      #@param [string] userid analyst id to login
+      #@param [string] password analyst password
+      def analyst_logon (userid, password)
         params = {
 
             :userID => userid,
@@ -27,7 +38,7 @@ module Xmlmc
         invoke :analystLogon, params
       end
 
-      def analyst_logon_trust userid, secret
+      def analyst_logon_trust (userid, secret)
         params = {
             :userID => userid,
             :secretKey => secret
@@ -35,14 +46,19 @@ module Xmlmc
         invoke :analystLogonTrust, params
       end
 
-      def bind_session token
+      #bind an existing session to the current session
+      #@param [string] token session token see get_session
+      def bind_session (token)
         params = {
             :sessionid => token
         }
         invoke :bindSession, params
       end
 
-      def change_password old_password, new_password
+      #change the selfservice password of the currently logged in customer.
+      #@param [string] old_password
+      #@param [string] new_password
+      def change_password (old_password, new_password)
         params = {
             :oldPassword => old_password,
             :newPassword => new_password
@@ -50,7 +66,7 @@ module Xmlmc
         invoke :changePassword, params
       end
 
-      def convert_date_time iso_date
+      def convert_date_time (iso_date)
         params = {
             :inputText => iso_date
         }
@@ -61,7 +77,7 @@ module Xmlmc
         invoke :getSessionInfo2
       end
 
-      def has_right right
+      def has_right (right)
         params = {
             :userRight => right
         }
@@ -76,7 +92,7 @@ module Xmlmc
         invoke :selfServiceLogoff
       end
 
-      def self_service_logon customer, password, instance = 'ITSM'
+      def self_service_logon (customer, password, instance = 'ITSM')
         params = {
             :customerId => customer,
             :password => password,
@@ -119,13 +135,14 @@ module Xmlmc
 
       def switch_analyst_context group, analyst = nil
         params = {
-            groupId => group
+            :groupId => group
         }
         if analyst
           params[:analystId] = analyst
         end
         invoke :switchAnalystContext, params
       end
+
       private
       def invoke method, params = {}, data = {}
         @xmlmc.invoke :session, method, params, data
@@ -133,6 +150,8 @@ module Xmlmc
     end
     class Data
       attr_reader :xmlmc
+      attr_reader :query
+      attr_accessor :query_results
 
       def initialize
         @xmlmc = INTERFACE
@@ -189,7 +208,7 @@ module Xmlmc
         invoke :runDataImport, params
       end
 
-      def sql_query query, max = 0, db = 'swdata', meta = false, format = false, raw_values = false
+      def sql_query query, rs = false, max = 0, db = 'swdata', meta = false, format = false, raw_values = false
         params = {
             :database => db,
             :query => query,
@@ -198,7 +217,11 @@ module Xmlmc
             :maxResults => max,
             :returnRawValues => raw_values
         }
-        invoke :sqlQuery, params
+        recordset = invoke :sqlQuery, params
+        if rs
+          return recordset
+        end
+        Xmlmc::Query.new recordset, @xmlmc
       end
 
       def update_record table, data, return_data = false
@@ -221,13 +244,275 @@ module Xmlmc
             :storedQuery => query,
             :parameters => param_string
         }
-        invoke :invokeStoredQuery, params
+        recordset = invoke :invokeStoredQuery, params
+        Xmlmc::Query.new recordset, @xmlmc
       end
 
       private
       def invoke method, params = {}, data = {}
         @xmlmc.invoke :data, method, params, data
 
+      end
+    end
+    class Helpdesk
+      attr_reader :xmlmc
+
+      def initialize
+        @xmlmc = INTERFACE
+      end
+
+      def log_call cust, sla, desc, callclass = 'Incident', addtl_call_vals = {}
+        params = {
+            :callClass => callclass,
+            :slaName => sla,
+            :customerId => cust,
+            :updateMessage => desc,
+            :additionalCallValues => addtl_call_vals
+        }
+
+        if addtl_call_vals[:opencall].respond_to?(:each)
+          if addtl_call_vals[:opencall][:itsm_title].respond_to?(:upcase)
+            #do nothing
+          else
+            params[:additionalCallValues][:opencall][:itsm_title] = desc
+          end
+        else
+          params[:additionalCallValues][:opencall]= {}
+          params[:additionalCallValues][:opencall][:itsm_title] = desc
+          puts params
+        end
+        invoke :logNewCall, params
+      end
+
+      def update_call callref, time, text
+        params = {
+            :callref => callref,
+            :timeSpent => time,
+            :description => text
+        }
+        invoke :updateCalls, params
+      end
+
+      def accept_call callref, sla_response = true
+        params = {
+            :callref => callref,
+            :markAsSLAResponse => sla_response
+        }
+        invoke :acceptCalls, params
+      end
+
+      def resolve_call callref, time, text
+        params = {
+            :callref => callref,
+            :timeSpent => time,
+            :description => text
+        }
+        invoke :resolveCalls, params
+      end
+
+      def log_incident cust, sla, desc, addtl_call_vals = {}
+        log_call cust, sla, desc, 'Incident', addtl_call_vals
+      end
+
+      def log_service_request cust, sla, desc, service, process
+        _workflow_id = nil
+        _stage_id = nil
+        _stage_title = nil
+        _service = nil
+
+        data = Xmlmc::Api::Data.new
+        query = data.sql_query "select pk_auto_id from config_itemi where ck_config_item = '#{service}'"
+        query.each do
+          _service = query.field 'pk_auto_id'
+        end
+        query = data.sql_query "select workflow.pk_workflow_id, workflow.fk_firststage_id, stage.title from bpm_workflow workflow join bpm_stage stage on stage.pk_stage_id = workflow.fk_firststage_id where workflow.pk_workflow_id = '#{process}'"
+        query.each do
+          _workflow_id = query.field 'pk_workflow_id'
+          _stage_id = query.field 'fk_firststage_id'
+          _stage_title = query.field 'title'
+        end
+
+        extra_data = {
+            :opencall => {
+                :bpm_workflow_id => _workflow_id,
+                :bpm_stage_title => _stage_title
+            },
+            :cmn_rel_opencall_ci => {
+                :fk_ci_auto_id => _service,
+                :relcode => 'Request'
+            }
+        }
+
+        if _workflow_id === nil
+          puts 'workflow is nil'
+          return
+        end
+
+        log_call cust, sla, desc, 'Service Request', extra_data
+      end
+
+      def log_change cust, sla, desc
+        log_call cust, sla, desc, 'Change Request'
+      end
+
+      def add_files_to_diary callref, udid, file, server_file
+        params = {
+            :callRef => callref,
+            :diaryUpdateId => udid,
+            :fileAttachment => file,
+            :serverFileAttachment => server_file
+        }
+        invoke :addFilesToCallDiaryItem, params
+      end
+
+      private
+      def invoke method, params = {}, data = {}
+        @xmlmc.invoke :helpdesk, method, params, data
+
+      end
+    end
+    class Knowledge_base
+      def initialize
+        @xmlmc = INTERFACE
+        @invoke_count = 0
+      end
+
+      def invoke method, params = {}, data = {}
+        @invoke_count+=1
+        results = @xmlmc.invoke :knowledgebase, method, params, data
+        if !(results.respond_to? :each)
+          if @invoke_count > 3
+            return
+          end
+          if @xmlmc.last_error == 'Invalid session. Please establish a session first'
+            session = new Session
+            session.analyst_logon @xmlmc.user_id, @xmlmc.user_pass
+            @invoke_count+=1
+            invoke method, params, data
+          end
+        end
+        results
+      end
+
+      def article_add (article)
+        params = {}
+        if article.respond_to? :each
+          article.each do |p, v|
+            params[p] = v
+          end
+        end
+        if params.length > 0
+          invoke :articleAdd, params
+        end
+      end
+
+      def article_delete (ref, force = false)
+        params = {
+            :docRef => ref,
+            :forceDelete => force
+        }
+        invoke :articleDelete, params
+      end
+
+      def article_update (ref, updates = {})
+        params = {
+            :docRef => ref
+        }
+        if updates.length > 0
+          updates.each do |p, v|
+            params[p] = v
+          end
+        end
+        invoke :articleUpdate, params
+      end
+
+      def catalog_add (name)
+        params = {
+            :name => name
+        }
+        invoke :catalogAdd, params
+      end
+
+      def catalog_delete (id)
+        params = {
+            :catalogId => id
+        }
+        invoke :catalogDelete, params
+      end
+
+      def catalog_list
+        invoke :catalogList
+      end
+
+      def catalog_rename (id, name)
+        params = {
+            :catalogId => id,
+            :newName => name
+        }
+        invoke :catalogRename, params
+      end
+
+      def document_add (doc)
+        params = {}
+        if doc.respond_to? :each
+          doc.each do |p, v|
+            params[p] = v
+          end
+        end
+        if params.length > 0
+          invoke :documentAdd, params
+        end
+      end
+
+      def document_delete (ref)
+        params = {
+            :docRef => ref
+        }
+        invoke :documentDelete, params
+      end
+
+      def document_list
+        invoke :documentList
+      end
+
+      def document_get_info (ref)
+        params = {
+            :docRef => ref
+        }
+        invoke :documentGetInfo, params
+      end
+
+      def document_get_callref ref
+        invoke :documentGetCallref, {:docRef => ref}
+      end
+    end
+    class Mail
+      attr_reader :xmlmc
+
+      def initialize
+        @xmlmc = INTERFACE
+      end
+
+      def get_mailbox_list (type=:all)
+        case type
+          when :shared, 'shared'
+            type = 2
+          when :personal, 'personal'
+            type = 1
+          when :all, 'all'
+        end
+
+        if type.respond_to? to_s or type.is_a? String
+          params = {}
+        else
+          params = {:type => type}
+          invoke :getMailboxList, params
+        end
+      end
+
+      private
+      def invoke method, params = {}, data = {}
+        @xmlmc.invoke :mail, method, params, data
       end
     end
   end
