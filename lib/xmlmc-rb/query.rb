@@ -1,3 +1,4 @@
+require_relative 'record'
 module Xmlmc
   class Query
     attr_reader :rs
@@ -13,7 +14,7 @@ module Xmlmc
     def each &code
       @current_row = 0
       @rs[:data].each do |i|
-        code.call i
+        code.call Record.new i, @iface, @current_row
         @current_row += 1
       end
       @current_row = nil
@@ -25,9 +26,9 @@ module Xmlmc
 
     def field field, row = 0
       f = @iface.prep_for_hash field, true
-      if @current_row
-        row = @current_row
-      end
+      # if @current_row
+      #   row = @current_row
+      # end
       @rs[:data][row][f]
     end
   end
