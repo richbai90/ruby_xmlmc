@@ -4,20 +4,27 @@ module Xmlmc
     attr_reader :last_error
     attr_accessor :user_id
     attr_accessor :user_pass
+    attr_accessor :server
 
-    def initialize server = 'localhost', port = '5015'
+    def initialize(server = 'localhost', port = '5015')
       set_endpoint(server, port)
       @last_error = nil
       @token = nil
       @xml = nil
     end
 
-    def set_endpoint server, port = '5015'
+    def set_endpoint(server, port = '5015')
       uri = "http://#{server}:#{port}"
+      @server = server
       @uri = URI uri
     end
 
-    def invoke service, method, params = {}, data = {}
+    def switch_port(port = '5015')
+      uri = "http://#{@server}:#{port}"
+      @uri = URI uri
+    end
+
+    def invoke(service, method, params = {}, data = {})
       if method == :analystLogon
         @user_id = params[:userID]
         @user_pass = params[:password]

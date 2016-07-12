@@ -8,7 +8,7 @@ Helper methods exist for the `session` and `data` services.
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'xmlmc-rb', '2.0.1'
+gem 'xmlmc-rb', '2.0.3'
 ```
 
 And then execute:
@@ -28,9 +28,7 @@ Or install it yourself as:
   be executed.
 
   The session class is the only class in the api that takes a parameter during instantiation, it requires the endpoint address for your supportworks server, and an optional
-  port number to use. By default the port is 5015 which should be the port used for 99.9% of calls to the api. If you intend to use the mail API or addressbook API you can change the endpoint
-  at any time by calling `session.set_endpoint`
-
+  port number to use. By default the port is 5015 which should not be changed. If a different port is required, the helper methods handle the switching on your behalf.
   The methods all return hashes of the values returned from the api. In the case of query methods, the data is returned under the `:data` key and is an array of hashes
   where each index in the array represents a row, and each key is column. Keys in the return hashes have been parameterized according to the rails standard, that is,
   lower snake-case.
@@ -57,8 +55,10 @@ puts opencall[:data][0][:callref]
 session.analyst_logoff
 ```
 
-###  Switching to a different API after login
+###  Making calls across multiple endpoints
 
+The Mail services API resides on port 5014 and the Session services reside on port 5015. In this case the
+ruby helper methods handle switching automatically.
 
 ```ruby
 require "xmlmc-rb"
@@ -82,21 +82,13 @@ password = ''
 
 # Authenticate the user
 
-session = Xmlmc::Api::Session.new endpoint, '5015'
+session = Xmlmc::Api::Session.new endpoint #defaults to port 5015
 session.analyst_logon username, password
 
-# Switch context to the mail API port 5014
-
-session.set_endpoint endpoint, '5014'
-
-mail = Xmlmc::Api::Mail.new
-
+mail = Xmlmc::Api::Mail.new #Automatically switch the port to port 5014
 puts mail.get_mailbox_list :shared
 
-# Switch back to the standard api to call the logoff
-# in future iterations we will make this more seemless
-
-session.set_endpoint endpoint, '5015'
+#switch back to port 5015
 session.analyst_logoff
 ```
 

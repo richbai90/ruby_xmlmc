@@ -20,6 +20,10 @@ module Xmlmc
         @xmlmc.set_endpoint server, port
       end
 
+      def switch_port(port='5015')
+        @xmlmc.switch_port port
+      end
+
       #logoff current session
       def analyst_logoff
         invoke :analystLogoff
@@ -145,6 +149,7 @@ module Xmlmc
 
       private
       def invoke method, params = {}, data = {}
+        @xmlmc.switch_port('5015')
         @xmlmc.invoke :session, method, params, data
       end
     end
@@ -250,6 +255,7 @@ module Xmlmc
 
       private
       def invoke method, params = {}, data = {}
+        @xmlmc.switch_port('5015')
         @xmlmc.invoke :data, method, params, data
 
       end
@@ -367,6 +373,7 @@ module Xmlmc
 
       private
       def invoke method, params = {}, data = {}
+        @xmlmc.switch_port('5014')
         @xmlmc.invoke :helpdesk, method, params, data
 
       end
@@ -378,6 +385,8 @@ module Xmlmc
       end
 
       def invoke method, params = {}, data = {}
+        #Try 3 times to establish a connection
+        @xmlmc.switch_port('5015')
         @invoke_count+=1
         results = @xmlmc.invoke :knowledgebase, method, params, data
         if !(results.respond_to? :each)
@@ -494,6 +503,7 @@ module Xmlmc
       end
 
       def get_mailbox_list (type=:all)
+
         case type
           when :shared, 'shared'
             type = 2
@@ -502,7 +512,7 @@ module Xmlmc
           when :all, 'all'
         end
 
-        if type.respond_to? to_s or type.is_a? String
+        if type.is_a? Symbol or type.is_a? String
           params = {}
         else
           params = {:type => type}
@@ -512,6 +522,8 @@ module Xmlmc
 
       private
       def invoke method, params = {}, data = {}
+        #verify that we are sending it to port 5014
+        @xmlmc.switch_port('5014')
         @xmlmc.invoke :mail, method, params, data
       end
     end
