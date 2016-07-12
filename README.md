@@ -17,7 +17,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install xmlmc-rb-2.0.1.gem
+    $ gem install xmlmc-rb-2.0.3.gem
 
 ## Usage
 
