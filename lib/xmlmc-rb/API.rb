@@ -285,7 +285,6 @@ module Xmlmc
         else
           params[:additionalCallValues][:opencall]= {}
           params[:additionalCallValues][:opencall][:itsm_title] = desc
-          puts params
         end
         invoke :logNewCall, params
       end
@@ -373,7 +372,7 @@ module Xmlmc
 
       private
       def invoke method, params = {}, data = {}
-        @xmlmc.switch_port('5014')
+        @xmlmc.switch_port('5015')
         @xmlmc.invoke :helpdesk, method, params, data
 
       end
