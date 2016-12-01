@@ -493,6 +493,10 @@ module Xmlmc
       def document_get_callref ref
         invoke :documentGetCallref, {:docRef => ref}
       end
+
+      def document_get_url ref
+        invoke(:documentGetUrl, {:docRef => ref})
+      end
     end
     class Mail
       attr_reader :xmlmc
